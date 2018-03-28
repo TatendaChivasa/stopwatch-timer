@@ -61,7 +61,7 @@
 #
 #--------------------------------------------------------------- 
 .data
-	prompt: .asciiz "Seconds= "
+	prompt: .asciiz "Seconds="
 	save0:     .word 0
 	sav1:       .word 0
 	colon:  .asciiz ":"
@@ -110,7 +110,7 @@ __start:
 check:
 	beq  $s3 $zero check	       #checking if the flag is set
 
-	addi  $t4  $zero 7	       #setting the number of places for the 
+	addi  $t4  $zero 5	       #setting the number of places for the backspace character
 	jal backspace		       #goes to the function that erases characters
 
 	move $a0, $s2		       # stores minute value in $a0
@@ -120,11 +120,11 @@ check:
 	jal getcharacter	       # calls function to print minute
 
 	la $a0, colon		       # loads colon address in $a0
-	jal colonprinting	       # calls function to print colon
+	jal setcolon     	       # calls function to print colon
 
 	move $a0, $s1		       # stores second value in $a0
 	jal getcharacter	       # calls function to print second
-
+	beq $s0 $zero leave            #if the timer ends exit the program
 
 	lw   $ra sav1		       #restoring the value of ra
 	add $s3 $zero $zero	       #setting the falg back to zero for next time
@@ -158,8 +158,8 @@ poll:
 
 exit:
 	jr $ra			       #exiting the function
-	
-colonprinting:
+
+setcolon:
 	lb $t9, 0($a0)                 #loading the colon into register t9
 	lw $t3, 0xffff0008             #loading the value of the data display register  
 	andi $t3, $t3, 0x01            #checking bit zero of the data display register
@@ -178,44 +178,48 @@ backspace:
 	addi $t4 $t4 -1                #decrementing the value in t4 to keep erasing
 	bne $t4 $zero backspace        #checking if the backspace is equal zero
 	jr $ra                         #jumping back to print the next values
+leave:
+	li $v0 10                      #exiting the program
+	syscall
 
 			
 
 .kdata
 	save3: .word 0
-	save1: .word 0
+	saveat: .word 0
+	save2: .word 0
 		
 .ktext 0x80000180
 	  .set noat
-	move  $k1 $at                  #storing at into k1
+	sw  $at saveat                 #storing at into k1
 	   .set at
 	
-	sw    $v0 save3                #storing the value of v0
-	
-	mfc0 $t6 $13                   #getting the cause register into a temporary register to check for exception
-	andi $t6 $t6 0x8000            #getting the value for bit 15 to check if its keyboard interrupt
-	beq  $t6 $zero iskeyboard      #if the bit is zero then a timer interrupt occurred
+	sw    $t5 save3              #storing the value of v0
+
+	mfc0 $k1 $13                   #getting the cause register into a temporary register to check for exception
+	andi $k1 $k1 0x8000            #getting the value for bit 15 to check if its keyboard interrupt
+	beq  $k1 $zero iskeyboard      #if the bit is zero then a timer interrupt occurred
 
 
 	addi $s3 $zero 1	
 	addi $s0 $s0 -1                #decrementing the number of seconds by the user
-	li   $t6 60                    #putting the value 60 into t6
+	li   $k1 60                    #putting the value 60 into t6
 	div  $s0 $t1                   #dividing the given value by the use by 60
 	mfhi $s1                       #checking if there is a remainder from the division0
 	mflo $s2                       #putting the value of the minutes into s2
 
 	
-	add  $t6 $zero $zero           #clearing the timer register to zero to restart incrementation 
-	mtc0 $t6 $9                    #returning the register to the coprocessor
-	bgez  $s0 done                 #if not yet zero continue running
+	add  $k1 $zero $zero           #clearing the timer register to zero to restart incrementation 
+	mtc0 $k1 $9                    #returning the register to the coprocessor
+	bgez $s0 done                  #if not yet zero continue running
 
 	li $v0 10                      #exiting the program
 	syscall
 
 iskeyboard:
 	lw   $t5 0xffff0004            #loading the keyboard data register into t5
-	li   $t6 113                   #loading the ascii code for q into t6
-	bne  $t5 $t6 done              #if it is equal q then raise an exception
+	li   $k1 113                   #loading the ascii code for q into t6
+	bne  $t5 $k1 done              #if it is equal q then raise an exception
 
 	li $v0 10                      #exiting the program
 	syscall
@@ -231,9 +235,10 @@ done:
         andi  $k0 $k0 0xfffd           #clearing the EXL bit to zero but preserving the values of the other bits using 13 as a mask in order to enable future exceptions
 	mtc0  $k0 $12                  #move updated Status register to coprocessor
 	
-	lw    $v0 save3                #Restore $v0
+	lw    $t5 save3                #Restore $v0
+
 	.set noat
-	move  $at $k1                  #Restore $at
+	lw  $at saveat                  #Restore $at
 	.set at
 	eret                           #Return to EPC
 
