@@ -53,11 +53,13 @@
 #	$t4: contains the value of the immediate used to loop over the backspace function
 #	$t5: contains the the keyboard data register / contains the ascii character for backspace
 #
-#	$t6: contains the cause register into a temporary register to check for exception / the immmediate value for division by sixty
+#	$t6: the immmediate value for division by sixty
 #	$t7: contains the remainder of the seconds has been divided by sixty
 #	$t8: contains the immmediate value for further division of time
 #	$t9: contains the bytes to be loaded to the data display in order to print
 #       
+#	$k0: is used to return from the exception handler
+#	$k1: contains the cause register into a temporary register to check for exception
 #
 #--------------------------------------------------------------- 
 .data
